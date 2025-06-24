@@ -26,42 +26,13 @@ jobs:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
-          echo 'Запускаем процесс обновления'
-          python3 <<EOF
-import os
-token = os.environ['TELEGRAM_TOKEN']
-chat_id = os.environ['TELEGRAM_CHAT_ID']
-
-from bs4 import BeautifulSoup
-import requests, json
-
-- name: Запускаем обновление
-  env:
-    TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
-    TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-  run: |
-    echo "Запускаем процесс обновления"
-
-    python3 <<EOF
-    import os
-    import requests, json
-    from bs4 import BeautifulSoup
-
-    token = os.environ['TELEGRAM_TOKEN']
-    chat_id = os.environ['TELEGRAM_CHAT_ID']
-
-    # пример вызова функции из внешнего файла (если понадобится)
-    # from jenmusic_updater import process_all_links
-    # process_all_links(token, chat_id)
-
-    print(f"Token: {token[:4]}..., ChatID: {chat_id}")
-    EOF
-
+          echo "Запускаем процесс обновления"
+          python3 jenmusic_updater.py
 
       - name: Коммит и пуш
         run: |
           git config user.name github-actions
           git config user.email github-actions@github.com
           git add index.html log.json
-          git commit -m "Auto update JenMusic site"
+          git commit -m "Auto update JenMusic site" || echo "Нечего коммитить"
           git push
