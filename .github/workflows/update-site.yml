@@ -1,15 +1,17 @@
-name: JenMusic Auto Update
+name: update-site
 
 on:
-  # запуск по расписанию и вручную
-  schedule:
-    - cron: '0 * * * *'
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - docs/saved_links.json
+      - jenmusic_updater.py
 
 jobs:
   update-site:
     runs-on: ubuntu-latest
-
     steps:
       - name: Клонируем репозиторий
         uses: actions/checkout@v3
@@ -17,24 +19,18 @@ jobs:
       - name: Устанавливаем Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
+          python-version: '3.x'
 
       - name: Устанавливаем зависимости
-        run: pip install beautifulsoup4 requests
+        run: pip install -r requirements.txt
 
       - name: Запускаем обновление
-        env:
-          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: |
-          echo "Запускаем процесс обновления"
-          python3 jenmusic_updater.py
+        run: python jenmusic_updater.py
 
-      -       - name: Коммит и пуш изменений
-  run: |
-    git config user.name github-actions
-    git config user.email github-actions@github.com
-    git add docs/index.html docs/log.json || true
-    git commit -m "Auto update site" || echo "Нечего коммитить"
-    git pull origin main --rebase || echo "Rebase failed"
-    git push origin main || echo "Push failed"
+      - name: Коммит и пуш изменений
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add docs/saved_links.json
+          git commit -m "Auto update saved_links.json" || echo "Нечего коммитить"
+          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:main
