@@ -1,13 +1,18 @@
 name: JenMusic Auto Update
 
 on:
+  workflow_dispatch:
   schedule:
-    - cron: '*/30 * * * *'  # запуск каждые 30 минут
-  workflow_dispatch:        # запуск вручную с GitHub
+    - cron: '0 * * * *'
 
 jobs:
   update:
     runs-on: ubuntu-latest
+
+    env:  # <-- добавлено
+      TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
@@ -19,14 +24,14 @@ jobs:
 
       - name: Install dependencies
         run: pip install -r requirements.txt
-        
+
       - name: Run updater script
         run: python jenmusic_updater.py
 
       - name: Commit and Push
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add index.html
-          git commit -m "🎧 Auto-update JenMusic from Telegram" || echo "No changes"
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add docs/index.html log.json || true
+          git commit -m "🤖 Автообновление JenMusic" || echo "No changes to commit"
           git push
