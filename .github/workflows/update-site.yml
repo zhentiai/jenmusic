@@ -30,10 +30,12 @@ jobs:
           echo "Запускаем процесс обновления"
           python3 jenmusic_updater.py
 
-      - name: Коммит и пуш изменений
+      -       - name: Коммит и пуш изменений
         run: |
           git config user.name github-actions
           git config user.email github-actions@github.com
-          git add docs/index.html docs/saved_links.json
+          git add docs/index.html docs/log.json
           git commit -m "Auto update JenMusic site" || echo "Нечего коммитить"
+          git pull --rebase
           git push
+
