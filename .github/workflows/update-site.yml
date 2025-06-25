@@ -3,21 +3,17 @@ name: update-site
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 * * * *' # запускается каждый час
+    - cron: '0 * * * *'
 
 jobs:
   update-site:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Set up job
-        run: echo "Starting job..."
-
       - name: Клонируем репозиторий
         uses: actions/checkout@v3
         with:
-          persist-credentials: true
-          fetch-depth: 0 # нужно для git pull
+          fetch-depth: 0
 
       - name: Устанавливаем Python
         uses: actions/setup-python@v4
@@ -34,18 +30,18 @@ jobs:
 
       - name: Настройка Git
         run: |
-          git config user.name github-actions
-          git config user.email github-actions@github.com
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
 
-      - name: Подтягиваем изменения с origin/main
-        run: git pull origin main --rebase
+      - name: Подтягиваем изменения из origin/main
+        run: git pull origin main --rebase || true
 
       - name: Коммит и пуш изменений
         run: |
-          if [[ -n $(git status --porcelain) ]]; then
-            git add docs/log.json
+          git add docs/log.json
+          if git diff --cached --quiet; then
+            echo "Нечего коммитить"
+          else
             git commit -m "Auto update site content"
             git push origin main
-          else
-            echo "Нечего коммитить"
           fi
