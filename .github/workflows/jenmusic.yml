@@ -8,11 +8,6 @@ on:
 jobs:
   update:
     runs-on: ubuntu-latest
-
-    env:  # <-- добавлено
-      TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
-      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
@@ -20,18 +15,22 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
+          python-version: '3.10'
 
       - name: Install dependencies
         run: pip install -r requirements.txt
 
       - name: Run updater script
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python jenmusic_updater.py
 
       - name: Commit and Push
         run: |
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "actions@github.com"
-          git add docs/index.html log.json || true
-          git commit -m "🤖 Автообновление JenMusic" || echo "No changes to commit"
+          git config --global user.name 'GitHub Actions'
+          git config --global user.email 'actions@github.com'
+          git add docs/index.html
+          git commit -m "Автообновление HTML"
           git push
+
