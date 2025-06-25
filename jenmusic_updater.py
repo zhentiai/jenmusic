@@ -1,10 +1,13 @@
 import requests
 from bs4 import BeautifulSoup
 import os, json
+
 from datetime import datetime
 
-YANDEX_LOG = "log.json"
-HTML_FILE = "index.html"
+# Папка, куда GitHub Pages смотрит
+OUTPUT_DIR = "docs"
+YANDEX_LOG = os.path.join(OUTPUT_DIR, "log.json")
+HTML_FILE = os.path.join(OUTPUT_DIR, "index.html")
 
 TEMPLATE = """<div class="track-block">
   <img src="{cover}" alt="{title}" class="cover">
@@ -55,11 +58,32 @@ def parse_yandex_music(url):
     }
 
 def update_html(track_data):
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+
     block = TEMPLATE.format(**track_data)
 
     if not os.path.exists(HTML_FILE):
         with open(HTML_FILE, "w", encoding="utf-8") as f:
-            f.write(f"<html><body><h1>JenMusic</h1>\n{block}\n</body></html>")
+            f.write(f"""<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>JenMusic</title>
+  <style>
+    body {{ font-family: sans-serif; background: #f8f8f8; padding: 20px; }}
+    .track-block {{ background: white; margin: 10px 0; padding: 10px; border-radius: 8px; display: flex; gap: 10px; }}
+    .cover {{ width: 80px; height: 80px; object-fit: cover; border-radius: 4px; }}
+    .track-info {{ flex: 1; }}
+    a {{ color: #3366cc; text-decoration: none; }}
+  </style>
+</head>
+<body>
+<h1>JenMusic 🎧</h1>
+{block}
+</body>
+</html>
+""")
+        print("📄 Создан новый index.html")
         return
 
     with open(HTML_FILE, "r+", encoding="utf-8") as f:
@@ -74,13 +98,13 @@ def update_html(track_data):
         print("✅ Добавлен:", track_data["title"])
 
 def load_log():
-    if os.path.exists("log.json"):
-        with open("log.json", "r", encoding="utf-8") as f:
+    if os.path.exists(YANDEX_LOG):
+        with open(YANDEX_LOG, "r", encoding="utf-8") as f:
             return set(json.load(f))
     return set()
 
 def save_log(logged):
-    with open("log.json", "w", encoding="utf-8") as f:
+    with open(YANDEX_LOG, "w", encoding="utf-8") as f:
         json.dump(sorted(logged), f, ensure_ascii=False, indent=2)
 
 def process_all_new(token, chat_id):
@@ -97,9 +121,7 @@ def process_all_new(token, chat_id):
                 print("⚠️ Ошибка:", e)
     save_log(logged)
 
-# Чтобы использовать в GitHub Actions:
 if __name__ == "__main__":
-    import os
     token = os.environ["TELEGRAM_TOKEN"]
     chat_id = os.environ["TELEGRAM_CHAT_ID"]
     process_all_new(token, chat_id)
