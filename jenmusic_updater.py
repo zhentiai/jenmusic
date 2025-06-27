@@ -1,130 +1,58 @@
-import requests
-from bs4 import BeautifulSoup
-import os, json
+import os
+import json
 from datetime import datetime
 
-OUTPUT_DIR = "docs"
-YANDEX_LOG = os.path.join(OUTPUT_DIR, "log.json")
-HTML_FILE = os.path.join(OUTPUT_DIR, "index.html")
+def generate_html(tracks):
+    html = "<html><head><title>JenMusic</title></head><body><h1>🎧 JenMusic</h1><ul>"
+    for track in tracks:
+        html += f'<li><a href="{track}">{track}</a></li>'
+    html += "</ul></body></html>"
+    return html
 
-TEMPLATE = """<div class="track-block">
-  <img src="{cover}" alt="{title}" class="cover">
-  <div class="track-info">
-    <p><strong>{title}</strong></p>
-    <p>{description}</p>
-    <a href="{link}" target="_blank">Слушать на Яндекс Музыке</a>
-  </div>
-</div>
-"""
-
-def get_yandex_links_from_channel(token, chat_id, limit=20):
-    url = f"https://api.telegram.org/bot{token}/getUpdates"
-    response = requests.get(url)
-    result = []
-
-    if response.status_code == 200:
-        data = response.json()
-        if data.get("ok"):
-            messages = data["result"]
-            for msg in messages:
-                try:
-                    text = msg["message"]["text"]
-                    if "music.yandex" in text:
-                        links = [word for word in text.split() if "music.yandex" in word]
-                        result.extend(links)
-                except KeyError:
-                    continue
-    return list(set(result))
-
-def parse_yandex_music(url):
-    headers = {"User-Agent": "Mozilla/5.0"}
-    r = requests.get(url, headers=headers)
-    soup = BeautifulSoup(r.text, "html.parser")
-
+def read_log(log_path):
+    if not os.path.exists(log_path):
+        return []
     try:
-        title = soup.find("meta", property="og:title")["content"]
-        description = soup.find("meta", property="og:description")["content"]
-        cover = soup.find("meta", property="og:image")["content"]
+        with open(log_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
     except Exception as e:
-        raise ValueError(f"Ошибка парсинга {url}: {e}")
+        print("⚠️ Не удалось прочитать log.json:", e)
+        return []
 
-    return {
-        "title": title,
-        "description": description,
-        "cover": cover,
-        "link": url
-    }
+def save_log(log_path, links):
+    with open(log_path, 'w', encoding='utf-8') as f:
+        json.dump(links, f, indent=2, ensure_ascii=False)
 
-def update_html(track_data):
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
-    block = TEMPLATE.format(**track_data)
+def save_html(index_path, links):
+    html = generate_html(links)
+    with open(index_path, 'w', encoding='utf-8') as f:
+        f.write(html)
+    print(f"✅ Файл {index_path} успешно создан с {len(links)} ссылками")
 
-    if not os.path.exists(HTML_FILE):
-        with open(HTML_FILE, "w", encoding="utf-8") as f:
-            f.write(f"""<!DOCTYPE html>
-<html lang="ru">
-<head>
-  <meta charset="UTF-8">
-  <title>JenMusic</title>
-  <style>
-    body {{ font-family: sans-serif; background: #f8f8f8; padding: 20px; }}
-    .track-block {{ background: white; margin: 10px 0; padding: 10px; border-radius: 8px; display: flex; gap: 10px; }}
-    .cover {{ width: 80px; height: 80px; object-fit: cover; border-radius: 4px; }}
-    .track-info {{ flex: 1; }}
-    a {{ color: #3366cc; text-decoration: none; }}
-  </style>
-</head>
-<body>
-<h1>JenMusic 🎧</h1>
-{block}
-</body>
-</html>
-""")
-        print("📄 Создан новый index.html")
-        return
+def get_yandex_links_from_env():
+    token = os.environ.get("TELEGRAM_TOKEN")
+    chat_id = os.environ.get("TELEGRAM_CHAT_ID")
+    if not token or not chat_id:
+        print("⚠️ Переменные окружения TELEGRAM_TOKEN и/или TELEGRAM_CHAT_ID не заданы")
+        return []
 
-    with open(HTML_FILE, "r+", encoding="utf-8") as f:
-        content = f.read()
+    # Место для реального получения ссылок из Telegram
+    # Пока тестово — возвращаем одну ссылку
+    return ["https://music.yandex.ru/album/123456/track/7891011"]
 
-        # Удалим старый блок, если уже добавлен
-        if track_data["link"] in content:
-            print("🔁 Перезаписываем:", track_data["link"])
-            start_idx = content.find('<div class="track-block')
-            end_idx = content.find('</div>', content.find(track_data["link"])) + 6
-            if start_idx != -1 and end_idx != -1:
-                content = content[:start_idx] + content[end_idx:]
+def main():
+    log_path = "docs/log.json"
+    index_path = "docs/index.html"
 
-        updated = content.replace("</body>", f"{block}\n</body>")
-        f.seek(0)
-        f.write(updated)
-        f.truncate()
-        print("✅ Обновлён:", track_data["title"])
+    old_links = read_log(log_path)
+    new_links = get_yandex_links_from_env()
 
-def load_log():
-    if os.path.exists(YANDEX_LOG):
-        with open(YANDEX_LOG, "r", encoding="utf-8") as f:
-            return set(json.load(f))
-    return set()
+    print(f"🔎 Найдено {len(new_links)} новых ссылок")
 
-def save_log(logged):
-    with open(YANDEX_LOG, "w", encoding="utf-8") as f:
-        json.dump(sorted(logged), f, ensure_ascii=False, indent=2)
+    unique_links = list(dict.fromkeys(old_links + new_links))  # убираем дубликаты
 
-def process_all_new(token, chat_id):
-    links = get_yandex_links_from_channel(token, chat_id)
-    logged = load_log()
-
-    for link in links:
-        if link not in logged:
-            try:
-                track = parse_yandex_music(link)
-                update_html(track)
-                logged.add(link)
-            except Exception as e:
-                print("⚠️ Ошибка:", e)
-    save_log(logged)
+    save_log(log_path, unique_links)
+    save_html(index_path, unique_links)
 
 if __name__ == "__main__":
-    token = os.environ["TELEGRAM_TOKEN"]
-    chat_id = os.environ["TELEGRAM_CHAT_ID"]
-    process_all_new(token, chat_id)
+    main()
