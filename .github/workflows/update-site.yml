@@ -2,46 +2,44 @@ name: update-site
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '0 * * * *'
 
 jobs:
-  update-site:
+  update:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Set up job
+        run: echo "Starting job"
+
       - name: Клонируем репозиторий
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
+        uses: actions/checkout@v4
 
       - name: Устанавливаем Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.x'
+          python-version: 3.11
 
       - name: Устанавливаем зависимости
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+        run: pip install -r requirements.txt
 
       - name: Запускаем обновление
         run: python jenmusic_updater.py
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
 
       - name: Настройка Git
         run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
+          git config user.name github-actions
+          git config user.email github-actions@github.com
 
       - name: Подтягиваем изменения из origin/main
-        run: git pull origin main --rebase || true
+        run: |
+          git fetch origin main
+          git merge origin/main --strategy-option=theirs
 
       - name: Коммит и пуш изменений
         run: |
-          git add docs/log.json
-          if git diff --cached --quiet; then
-            echo "Нечего коммитить"
-          else
-            git commit -m "Auto update site content"
-            git push origin main
-          fi
+          git add docs/index.html docs/log.json
+          git commit -m "Auto update site"
+          git push
+        continue-on-error: true
