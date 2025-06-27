@@ -1,3 +1,10 @@
+- name: Fail if any env is missing
+  run: |
+    [ -z "$TELEGRAM_TOKEN" ] && echo "TELEGRAM_TOKEN is missing!" && exit 1
+    [ -z "$TELEGRAM_CHAT_ID" ] && echo "TELEGRAM_CHAT_ID is missing!" && exit 1
+    [ -z "$API_ID" ] && echo "API_ID is missing!" && exit 1
+    [ -z "$API_HASH" ] && echo "API_HASH is missing!" && exit 1
+
 name: update-site
 
 on:
