@@ -20,7 +20,17 @@ jobs:
           python-version: 3.11
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Verify environment variables
+        run: |
+          echo "Checking env vars..."
+          [ -z "$TELEGRAM_TOKEN" ] && echo "TELEGRAM_TOKEN is empty!" || echo "TELEGRAM_TOKEN exists"
+          [ -z "$TELEGRAM_CHAT_ID" ] && echo "TELEGRAM_CHAT_ID is empty!" || echo "TELEGRAM_CHAT_ID exists"
+          [ -z "$API_ID" ] && echo "API_ID is empty!" || echo "API_ID exists"
+          [ -z "$API_HASH" ] && echo "API_HASH is empty!" || echo "API_HASH exists"
 
       - name: Run updater
         env:
@@ -28,13 +38,21 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           API_ID: ${{ secrets.API_ID }}
           API_HASH: ${{ secrets.API_HASH }}
-        run: python jenmusic_updater.py
-
-      - name: Commit and push
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git config user.name "GitHub Actions"
-          git config user.email "actions@github.com"
+          echo "Running updater..."
+          python jenmusic_updater.py
+
+      - name: Commit and push changes
+        if: success()
+        env:
+          GITHUB_TOKEN: ${{ github.token }}  # Используем встроенный токен
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
           git add docs/
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-update: $(date +'%Y-%m-%d %H:%M')" && git push)
+          if git diff-index --quiet HEAD --; then
+            echo "No changes to commit"
+          else
+            git commit -m "Auto-update: $(date +'%Y-%m-%d %H:%M')"
+            git push
+          fi
