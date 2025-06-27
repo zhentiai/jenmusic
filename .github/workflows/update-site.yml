@@ -1,37 +1,42 @@
 name: update-site
 
 on:
-  workflow_dispatch:
+  workflow_dispatch:  # Возможность ручного запуска из интерфейса GitHub
   schedule:
-    - cron: '0 * * * *'  # Каждый час
+    - cron: '0 * * * *'  # Запуск каждый час
 
 jobs:
   update:
     runs-on: ubuntu-latest
 
     steps:
+      # ✅ Клонируем репозиторий
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
 
+      # ✅ Устанавливаем Python
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: 3.11
 
+      # ✅ Устанавливаем зависимости
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      # ✅ Проверяем наличие переменных окружения
       - name: Verify environment variables
         run: |
           echo "Checking env vars..."
-          [ -z "$TELEGRAM_TOKEN" ] && echo "TELEGRAM_TOKEN is empty!" || echo "TELEGRAM_TOKEN exists"
-          [ -z "$TELEGRAM_CHAT_ID" ] && echo "TELEGRAM_CHAT_ID is empty!" || echo "TELEGRAM_CHAT_ID exists"
-          [ -z "$API_ID" ] && echo "API_ID is empty!" || echo "API_ID exists"
-          [ -z "$API_HASH" ] && echo "API_HASH is empty!" || echo "API_HASH exists"
+          [ -z "$TELEGRAM_TOKEN" ] && echo "❌ TELEGRAM_TOKEN is empty!" || echo "✅ TELEGRAM_TOKEN exists"
+          [ -z "$TELEGRAM_CHAT_ID" ] && echo "❌ TELEGRAM_CHAT_ID is empty!" || echo "✅ TELEGRAM_CHAT_ID exists"
+          [ -z "$API_ID" ] && echo "❌ API_ID is empty!" || echo "✅ API_ID exists"
+          [ -z "$API_HASH" ] && echo "❌ API_HASH is empty!" || echo "✅ API_HASH exists"
 
+      # ✅ Запускаем скрипт
       - name: Run updater
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
@@ -42,17 +47,17 @@ jobs:
           echo "Running updater..."
           python jenmusic_updater.py
 
+      # ✅ Коммитим и пушим изменения, если они есть
       - name: Commit and push changes
         if: success()
         env:
-          GITHUB_TOKEN: ${{ github.token }}  # Используем встроенный токен
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
           git add docs/
           if git diff-index --quiet HEAD --; then
-            echo "No changes to commit"
+            echo "✅ No changes to commit"
           else
             git commit -m "Auto-update: $(date +'%Y-%m-%d %H:%M')"
             git push
-          fi
